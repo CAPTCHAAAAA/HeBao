@@ -1,16 +1,20 @@
 package com.example.hebao
 
+import android.annotation.SuppressLint
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
+import android.util.Base64
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
-import android.webkit.WebChromeClient
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.webkit.*
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.bottomsheet.BottomSheetDialog
 
 class MainActivity : AppCompatActivity() {
 
@@ -22,9 +26,27 @@ class MainActivity : AppCompatActivity() {
     private lateinit var moreBtn: TextView
 
     private var isDarkMode = true
+    private var isImageVersion = true
+    private var targetImageIndex = -1
 
-    // 🌟 核心变量：把网页以字符串形式放在内存里，任由我们揉捏修改
-    private var webContent: String = ""
+    // ================= 图片选取与替换 =================
+    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            Thread {
+                try {
+                    val inputStream = contentResolver.openInputStream(it)
+                    val bytes = inputStream?.readBytes()
+                    inputStream?.close()
+                    val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                    val mimeType = contentResolver.getType(it) ?: "image/jpeg"
+                    runOnUiThread {
+                        webView.evaluateJavascript("document.getElementsByTagName('img')[$targetImageIndex].src = 'data:$mimeType;base64,$base64';", null)
+                        Toast.makeText(this@MainActivity, "图片修改成功", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) { e.printStackTrace() }
+            }.start()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,98 +65,374 @@ class MainActivity : AppCompatActivity() {
         closeBtn.setOnClickListener { finish() }
         moreBtn.setOnClickListener { showCustomPopupMenu(moreBtn) }
 
-        // 软件启动时，直接加载内置的 assets 网页
-        loadAssetHtml()
+        loadCurrentHtmlVersion()
     }
 
+    private fun loadCurrentHtmlVersion() {
+        val fileName = if (isImageVersion) "perfect_leave_img.html" else "perfect_leave_noimg.html"
+        webView.loadUrl("file:///android_asset/$fileName")
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             allowFileAccess = true
-            allowContentAccess = true
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             allowFileAccessFromFileURLs = true
             allowUniversalAccessFromFileURLs = true
-            useWideViewPort = true
-            loadWithOverviewMode = true
-            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            // 伪装微信浏览器 UA
-            userAgentString = "$userAgentString MicroMessenger/8.0.45 NetType/WIFI Language/zh_CN"
         }
+        webView.addJavascriptInterface(WebAppInterface(), "Android")
+
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                titleText.text = "请假详情"
+                val patchJs = """
+                    (function(){
+                        window.wx = {config:function(c){if(c && c.success) c.success()},ready:function(f){f()},error:function(f){}};
+                        window.campus = {config:function(c){if(c && c.success) c.success()}};
+                    })();
+                """.trimIndent()
+                webView.evaluateJavascript(patchJs, null)
             }
         }
-        webView.webChromeClient = object : WebChromeClient() {
-            override fun onReceivedTitle(view: WebView?, title: String?) {
-                super.onReceivedTitle(view, title)
-                titleText.text = "请假详情"
+    }
+
+    // ================= 安卓与 JS 通信桥梁 =================
+    inner class WebAppInterface {
+        @JavascriptInterface
+        fun onImageClicked(index: Int) {
+            targetImageIndex = index
+            pickImageLauncher.launch("image/*")
+        }
+
+        @JavascriptInterface
+        fun onTextClicked(elementId: String, currentText: String) {
+            runOnUiThread {
+                showTextEditDialog(elementId, currentText)
             }
         }
-    }
 
-    /**
-     * 🌟 修改后：从软件内部读取 HTML 资产，加载进内存并渲染
-     */
-    private fun loadAssetHtml() {
-        try {
-            // 打开 assets 目录下的 perfect_leave.html
-            val inputStream = assets.open("perfect_leave.html")
-            // 一次性读成字符串放入内存
-            webContent = inputStream.bufferedReader().use { it.readText() }
-
-            // 将内存中的数据丢给 WebView 渲染（MIME 类型改为 text/html）
-            webView.loadDataWithBaseURL("file:///android_asset/", webContent, "text/html", "UTF-8", null)
-            titleText.text = "请假详情"
-
-        } catch (e: Exception) {
-            Toast.makeText(this, "未能找到内置网页，请检查 assets 目录", Toast.LENGTH_LONG).show()
+        @JavascriptInterface
+        fun showToast(msg: String) {
+            runOnUiThread { Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show() }
         }
     }
 
-    /**
-     * 🌟 修改后：交互式修改内存数据，绕过所有安全限制
-     */
-    private fun triggerEditHtml() {
-        if (webContent.isEmpty()) {
-            Toast.makeText(this, "网页数据未加载", Toast.LENGTH_SHORT).show()
-            return
-        }
+    // ================= 核心：原子级点触改字（现代扁平风） =================
+    private fun enableTextEditMode() {
+        val js = """
+            (function(){
+                if(!document.getElementById('hebao-modern-style')) {
+                    var style = document.createElement('style');
+                    style.id = 'hebao-modern-style';
+                    style.innerHTML = `
+                        .hebao-editable-text {
+                            background-color: rgba(0, 122, 255, 0.12) !important;
+                            border-radius: 6px !important;
+                            box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.15) !important;
+                            cursor: pointer !important;
+                            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+                            display: inline;
+                            padding: 1px 2px;
+                        }
+                        .hebao-editable-text:active {
+                            background-color: rgba(0, 122, 255, 0.25) !important;
+                            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.4) !important;
+                            transform: scale(0.97) !important;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
 
-        // 无论是普通的"病假"，还是部分 mhtml 特有的十六进制"=E7=97=85=E5=81=87"，一并干掉
-        var modified = false
-
-        if (webContent.contains("病假")) {
-            webContent = webContent.replace("病假", "事假")
-            modified = true
-        }
-        if (webContent.contains("=E7=97=85=E5=81=87")) {
-            webContent = webContent.replace("=E7=97=85=E5=81=87", "=E4=BA=8B=E5=81=87") // 对应"事假"的编码
-            modified = true
-        }
-
-        if (modified) {
-            // 数据修改后，直接重新丢给 WebView 渲染（MIME 类型改为 text/html）
-            webView.loadDataWithBaseURL("file:///android_asset/", webContent, "text/html", "UTF-8", null)
-            Toast.makeText(this, "修改成功", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "当前页面没有找到需要修改的文字", Toast.LENGTH_SHORT).show()
-        }
+                var count = 0;
+                function walk(node) {
+                    if (node.nodeType === 3) {
+                        var txt = node.nodeValue;
+                        if (txt.trim() !== '') {
+                            var span = document.createElement('span');
+                            span.className = 'hebao-editable-text';
+                            span.setAttribute('data-tid', 'text_' + count++);
+                            span.textContent = txt;
+                            
+                            span.onclick = function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                var id = this.getAttribute('data-tid');
+                                var currentTxt = this.textContent;
+                                
+                                var allSpans = document.querySelectorAll('.hebao-editable-text');
+                                for(var i=0; i<allSpans.length; i++) {
+                                    allSpans[i].classList.remove('hebao-editable-text');
+                                    allSpans[i].onclick = null;
+                                }
+                                window.Android.onTextClicked(id, currentTxt);
+                            };
+                            return span;
+                        }
+                    } else if (node.nodeType === 1 && !['SCRIPT','STYLE','NOSCRIPT'].includes(node.tagName)) {
+                        if (node.className && typeof node.className === 'string' && node.className.includes('hebao-editable-text')) return;
+                        var childNodes = Array.from(node.childNodes);
+                        for (var i = 0; i < childNodes.length; i++) {
+                            var child = childNodes[i];
+                            var replacement = walk(child);
+                            if (replacement) node.replaceChild(replacement, child);
+                        }
+                    }
+                    return null;
+                }
+                
+                walk(document.body);
+                if(count > 0) window.Android.showToast('请点触需要修改的文字');
+            })();
+        """.trimIndent()
+        webView.evaluateJavascript(js, null)
     }
 
-    /**
-     * 弹出菜单核心控制（UI 样式完全未动）
-     */
+    // 🌟 四级编辑面板：极致扁平化文本编辑框
+    private fun showTextEditDialog(elementId: String, currentText: String) {
+        val dialog = BottomSheetDialog(this)
+
+        val panelColor = if (isDarkMode) "#222222" else "#FFFFFF"
+        val inputColor = if (isDarkMode) "#2A2A2A" else "#F2F2F7"
+        val textColor = if (isDarkMode) "#EEEEEE" else "#1C1C1E"
+        val hintColor = if (isDarkMode) "#777777" else "#999999"
+
+        val rootLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(60, 30, 60, 60)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor(panelColor))
+                cornerRadii = floatArrayOf(48f, 48f, 48f, 48f, 0f, 0f, 0f, 0f)
+            }
+        }
+
+        val handleBar = View(this).apply {
+            val lp = LinearLayout.LayoutParams((40 * resources.displayMetrics.density).toInt(), (4 * resources.displayMetrics.density).toInt()).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                bottomMargin = (24 * resources.displayMetrics.density).toInt()
+            }
+            layoutParams = lp
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor(if (isDarkMode) "#444444" else "#D1D1D1"))
+                cornerRadius = 10f
+            }
+        }
+        rootLayout.addView(handleBar)
+
+        val titleView = TextView(this).apply {
+            text = "请注意文本格式"
+            textSize = 17f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(Color.parseColor(if (isDarkMode) "#FF453A" else "#FF3B30"))
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = (16 * resources.displayMetrics.density).toInt()
+            }
+            layoutParams = lp
+        }
+        rootLayout.addView(titleView)
+
+        val editText = EditText(this).apply {
+            setText(currentText)
+            setSelection(currentText.length)
+            setTextColor(Color.parseColor(textColor))
+            setHintTextColor(Color.parseColor(hintColor))
+            textSize = 15f
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor(inputColor))
+                cornerRadius = (12 * resources.displayMetrics.density)
+            }
+            setPadding(
+                (16 * resources.displayMetrics.density).toInt(),
+                (14 * resources.displayMetrics.density).toInt(),
+                (16 * resources.displayMetrics.density).toInt(),
+                (14 * resources.displayMetrics.density).toInt()
+            )
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = (24 * resources.displayMetrics.density).toInt()
+            }
+            layoutParams = lp
+        }
+        rootLayout.addView(editText)
+
+        val saveBtn = TextView(this).apply {
+            text = "完 成"
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#007AFF"))
+                cornerRadius = (12 * resources.displayMetrics.density)
+            }
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, (48 * resources.displayMetrics.density).toInt())
+            layoutParams = lp
+            isClickable = true
+
+            setOnClickListener {
+                val newText = editText.text.toString()
+                if (newText.isNotEmpty()) {
+                    val safeText = newText.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
+                    val updateJs = "document.querySelector('[data-tid=\"$elementId\"]').textContent = '$safeText';"
+                    webView.evaluateJavascript(updateJs, null)
+                    dialog.dismiss()
+                }
+            }
+        }
+        rootLayout.addView(saveBtn)
+
+        dialog.setContentView(rootLayout)
+        dialog.setOnShowListener {
+            val bottomSheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            bottomSheet?.setBackgroundColor(Color.TRANSPARENT)
+        }
+        dialog.show()
+    }
+
+    // ================= 核心：现代感点触换图 =================
+    private fun enableImageEditMode() {
+        val js = """
+            (function(){
+                if(!document.getElementById('hebao-modern-style-img')) {
+                    var style = document.createElement('style');
+                    style.id = 'hebao-modern-style-img';
+                    style.innerHTML = `
+                        .hebao-editable-img {
+                            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.7), 0 8px 16px rgba(0, 122, 255, 0.2) !important;
+                            border-radius: 8px !important;
+                            cursor: pointer !important;
+                            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+                            filter: brightness(0.95);
+                        }
+                        .hebao-editable-img:active {
+                            transform: scale(0.95) !important;
+                            filter: brightness(0.85);
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+                var imgs = document.getElementsByTagName('img');
+                if(imgs.length === 0) { window.Android.showToast('当前页面没有图片'); return; }
+                
+                window.Android.showToast('请点击需要替换的图片');
+                for(var i = 0; i < imgs.length; i++) {
+                    imgs[i].classList.add('hebao-editable-img');
+                    (function(index){
+                        imgs[index].onclick = function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            for(var j=0; j<imgs.length; j++) {
+                                imgs[j].classList.remove('hebao-editable-img');
+                                imgs[j].onclick=null;
+                            }
+                            window.Android.onImageClicked(index);
+                        };
+                    })(i);
+                }
+            })();
+        """.trimIndent()
+        webView.evaluateJavascript(js, null)
+    }
+
+    // 🌟 三级高级菜单：动态智能 Toast 反馈
+    private fun showAdvancedEditMenu() {
+        val dialog = BottomSheetDialog(this)
+
+        val bgColor = if (isDarkMode) "#222222" else "#FFFFFF"
+        val txtColor = if (isDarkMode) "#EEEEEE" else "#1C1C1E"
+
+        // 根布局
+        val rootLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 30, 0, 40)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor(bgColor))
+                cornerRadii = floatArrayOf(48f, 48f, 48f, 48f, 0f, 0f, 0f, 0f)
+            }
+        }
+
+        // 顶部小胶囊指示器
+        val handleBar = View(this).apply {
+            val lp = LinearLayout.LayoutParams((40 * resources.displayMetrics.density).toInt(), (4 * resources.displayMetrics.density).toInt()).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                bottomMargin = (16 * resources.displayMetrics.density).toInt()
+            }
+            layoutParams = lp
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor(if (isDarkMode) "#444444" else "#D1D1D1"))
+                cornerRadius = 10f
+            }
+        }
+        rootLayout.addView(handleBar)
+
+        fun createMenuRow(iconStr: String, titleStr: String, onClick: () -> Unit): LinearLayout {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                val pad = (18 * resources.displayMetrics.density).toInt()
+                setPadding(pad + 20, pad, pad, pad)
+                isClickable = true
+                isFocusable = true
+                val outValue = TypedValue()
+                context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+                setBackgroundResource(outValue.resourceId)
+                setOnClickListener { onClick() }
+            }
+
+            val iconView = TextView(this).apply {
+                text = iconStr
+                textSize = 20f
+                val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    rightMargin = (16 * resources.displayMetrics.density).toInt()
+                }
+                layoutParams = lp
+            }
+            row.addView(iconView)
+
+            val titleView = TextView(this).apply {
+                text = titleStr
+                textSize = 16f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(Color.parseColor(txtColor))
+            }
+            row.addView(titleView)
+
+            return row
+        }
+
+        rootLayout.addView(createMenuRow("📝", "修改文本") {
+            dialog.dismiss()
+            enableTextEditMode()
+        })
+        rootLayout.addView(createMenuRow("🖼️", "更改图片") {
+            dialog.dismiss()
+            enableImageEditMode()
+        })
+
+        // 🌟 核心修改点：动态提示当前切换到了哪个版本
+        rootLayout.addView(createMenuRow("🔄", "切换版本") {
+            dialog.dismiss()
+            isImageVersion = !isImageVersion
+            loadCurrentHtmlVersion()
+
+            val toastMsg = if (isImageVersion) "已切换至有图版本" else "已切换至无图版本"
+            Toast.makeText(this@MainActivity, toastMsg, Toast.LENGTH_SHORT).show()
+        })
+
+        dialog.setContentView(rootLayout)
+        dialog.setOnShowListener {
+            val bottomSheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            bottomSheet?.setBackgroundColor(Color.TRANSPARENT)
+        }
+        dialog.show()
+    }
+
+    // ================= 原有完美的二级菜单 UI 逻辑 =================
     private fun showCustomPopupMenu(anchorView: View) {
         val popupView = layoutInflater.inflate(R.layout.layout_custom_popup, null)
-
-        val widthInDp = 95
         val density = resources.displayMetrics.density
-        val widthInPx = (widthInDp * density).toInt()
-
-        val popupWindow = PopupWindow(popupView, widthInPx, WindowManager.LayoutParams.WRAP_CONTENT, true)
+        val popupWindow = PopupWindow(popupView, (95 * density).toInt(), WindowManager.LayoutParams.WRAP_CONTENT, true)
         popupWindow.elevation = 4f
         popupWindow.isOutsideTouchable = true
 
@@ -142,77 +440,40 @@ class MainActivity : AppCompatActivity() {
         val menuOpen = popupView.findViewById<TextView>(R.id.menuOpen)
         val menuEdit = popupView.findViewById<TextView>(R.id.menuEdit)
         val menuTheme = popupView.findViewById<TextView>(R.id.menuTheme)
-        val line1 = popupView.findViewById<View>(R.id.line1)
-        val line2 = popupView.findViewById<View>(R.id.line2)
 
         val popBgColor = if (isDarkMode) "#2B2B2B" else "#FFFFFF"
         val popTxtColor = if (isDarkMode) "#DFDFDF" else "#222222"
-        val strokeColor = if (isDarkMode) "#444444" else "#E5E5E5"
-        val lineColor = if (isDarkMode) "#1AFFFFFF" else "#1A000000"
-
-        val drawable = container.background as GradientDrawable
-        drawable.setColor(Color.parseColor(popBgColor))
-        drawable.setStroke(1, Color.parseColor(strokeColor))
+        (container.background as GradientDrawable).setColor(Color.parseColor(popBgColor))
 
         val tColor = Color.parseColor(popTxtColor)
-        menuOpen.setTextColor(tColor)
-        menuEdit.setTextColor(tColor)
-        menuTheme.setTextColor(tColor)
-        line1.setBackgroundColor(Color.parseColor(lineColor))
-        line2.setBackgroundColor(Color.parseColor(lineColor))
+        menuOpen.setTextColor(tColor); menuEdit.setTextColor(tColor); menuTheme.setTextColor(tColor)
 
-        // 因为不再需要外部选文件，这里把原本的"打开文件"改为"恢复原状/重载文件"
-        menuOpen.text = "重载文件"
-        menuEdit.text = "修改"
-        menuTheme.text = if (isDarkMode) "浅色" else "深色"
+        menuOpen.text = "刷新重置"
+        menuEdit.text = "高级编辑"
+        menuTheme.text = if (isDarkMode) "浅色模式" else "深色模式"
 
-        // 点击事件绑定新逻辑
-        menuOpen.setOnClickListener {
-            popupWindow.dismiss()
-            loadAssetHtml() // 重新从 assets 读取原始文件，相当于重置
-            Toast.makeText(this, "文件已恢复初始状态", Toast.LENGTH_SHORT).show()
-        }
+        menuOpen.setOnClickListener { popupWindow.dismiss(); webView.reload() }
         menuEdit.setOnClickListener {
             popupWindow.dismiss()
-            triggerEditHtml()
+            showAdvancedEditMenu()
         }
         menuTheme.setOnClickListener {
             isDarkMode = !isDarkMode
             applyTheme()
             popupWindow.dismiss()
         }
-
-        val offsetX = (-82 * density).toInt()
-        val offsetY = (4 * density).toInt()
-        popupWindow.showAsDropDown(anchorView, offsetX, offsetY)
+        popupWindow.showAsDropDown(anchorView, (-82 * density).toInt(), (4 * density).toInt())
     }
 
-    /**
-     * 基础核心 UI 主题切换
-     */
     private fun applyTheme() {
-        val bgColorStr = if (isDarkMode) "#191919" else "#EDEDED"
-        val txtColorStr = if (isDarkMode) "#DFDFDF" else "#111111"
-        val urlColorStr = if (isDarkMode) "#7F7F7F" else "#999999"
-
-        val bgColor = Color.parseColor(bgColorStr)
-        val txtColor = Color.parseColor(txtColorStr)
-        val urlColor = Color.parseColor(urlColorStr)
-
+        val bgColor = Color.parseColor(if (isDarkMode) "#191919" else "#EDEDED")
+        val txtColor = Color.parseColor(if (isDarkMode) "#DFDFDF" else "#111111")
         topBarContainer.setBackgroundColor(bgColor)
         titleText.setTextColor(txtColor)
         closeBtn.setTextColor(txtColor)
-        urlText.setTextColor(urlColor)
         moreBtn.setTextColor(txtColor)
-
-        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+        urlText.setTextColor(Color.parseColor(if (isDarkMode) "#7F7F7F" else "#999999"))
         window.statusBarColor = bgColor
-
-        if (!isDarkMode) {
-            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-        } else {
-            window.decorView.systemUiVisibility = 0
-        }
+        window.decorView.systemUiVisibility = if (!isDarkMode) View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR else 0
     }
 }
