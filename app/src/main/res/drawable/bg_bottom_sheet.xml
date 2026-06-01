@@ -1,3 +1,64 @@
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#FFFFFF" /> <corners android:topLeftRadius="24dp" android:topRightRadius="24dp" />
-</shape>
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 主体承托层：高不透明，保证阅读 -->
+    <item>
+        <shape>
+            <solid android:color="#FAF8F8F8" />
+            <stroke
+                android:width="0.8dp"
+                android:color="#FFFFFFFF" />
+            <corners
+                android:topLeftRadius="30dp"
+                android:topRightRadius="30dp" />
+        </shape>
+    </item>
+
+    <!-- 顶部大面积柔光 -->
+    <item
+        android:left="1dp"
+        android:top="1dp"
+        android:right="1dp"
+        android:bottom="0dp">
+        <shape>
+            <gradient
+                android:angle="270"
+                android:startColor="#B8FFFFFF"
+                android:centerColor="#42FFFFFF"
+                android:endColor="#00FFFFFF" />
+            <corners
+                android:topLeftRadius="30dp"
+                android:topRightRadius="30dp" />
+        </shape>
+    </item>
+
+    <!-- 顶部细高光线 -->
+    <item
+        android:left="24dp"
+        android:top="1dp"
+        android:right="24dp"
+        android:bottom="180dp">
+        <shape>
+            <solid android:color="#CCFFFFFF" />
+            <corners android:radius="999dp" />
+        </shape>
+    </item>
+
+    <!-- 底部轻微压暗，制造玻璃厚度 -->
+    <item
+        android:left="0dp"
+        android:top="150dp"
+        android:right="0dp"
+        android:bottom="0dp">
+        <shape>
+            <gradient
+                android:angle="90"
+                android:startColor="#0A000000"
+                android:endColor="#00000000" />
+            <corners
+                android:topLeftRadius="30dp"
+                android:topRightRadius="30dp" />
+        </shape>
+    </item>
+
+</layer-list>

@@ -6,47 +6,56 @@
     android:layout_height="wrap_content"
     android:background="@drawable/bg_flat_popup"
     android:orientation="vertical"
-    android:paddingTop="2dp"
-    android:paddingBottom="2dp">
+    android:paddingLeft="8dp"
+    android:paddingTop="8dp"
+    android:paddingRight="8dp"
+    android:paddingBottom="8dp"
+    android:clipToPadding="false"
+    android:animateLayoutChanges="true"
+    android:elevation="18dp">
 
     <TextView
         android:id="@+id/menuOpen"
         android:layout_width="match_parent"
-        android:layout_height="38dp"
-        android:gravity="center"
-        android:textColor="#DFDFDF"
+        android:layout_height="42dp"
+        android:layout_marginBottom="7dp"
+        android:gravity="center_vertical"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:textColor="#F7F7F7"
         android:textSize="13sp"
-        android:background="?attr/selectableItemBackground"/>
-
-    <View
-        android:id="@+id/line1"
-        android:layout_width="match_parent"
-        android:layout_height="0.5dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"/>
+        android:textStyle="normal"
+        android:background="@drawable/bg_popup_capsule"
+        android:clickable="true"
+        android:focusable="true"/>
 
     <TextView
         android:id="@+id/menuEdit"
         android:layout_width="match_parent"
-        android:layout_height="38dp"
-        android:gravity="center"
-        android:textColor="#DFDFDF"
+        android:layout_height="42dp"
+        android:layout_marginBottom="7dp"
+        android:gravity="center_vertical"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:textColor="#F7F7F7"
         android:textSize="13sp"
-        android:background="?attr/selectableItemBackground"/>
-
-    <View
-        android:id="@+id/line2"
-        android:layout_width="match_parent"
-        android:layout_height="0.5dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"/>
+        android:textStyle="bold"
+        android:background="@drawable/bg_popup_capsule"
+        android:clickable="true"
+        android:focusable="true"/>
 
     <TextView
         android:id="@+id/menuTheme"
         android:layout_width="match_parent"
-        android:layout_height="38dp"
-        android:gravity="center"
-        android:textColor="#DFDFDF"
+        android:layout_height="42dp"
+        android:gravity="center_vertical"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:textColor="#F7F7F7"
         android:textSize="13sp"
-        android:background="?attr/selectableItemBackground"/>
+        android:textStyle="normal"
+        android:background="@drawable/bg_popup_capsule"
+        android:clickable="true"
+        android:focusable="true"/>
+
 </LinearLayout>

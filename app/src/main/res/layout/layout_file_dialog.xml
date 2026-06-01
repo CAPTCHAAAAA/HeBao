@@ -2,18 +2,24 @@
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/fileDialogContainer"
-    android:layout_width="260dp"
-    android:layout_height="360dp"
+    android:layout_width="270dp"
+    android:layout_height="370dp"
     android:background="@drawable/bg_flat_popup"
     android:orientation="vertical"
-    android:padding="14dp">
+    android:padding="14dp"
+    android:animateLayoutChanges="true"
+    android:elevation="12dp">
 
     <TextView
         android:id="@+id/tvCurrentPath"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="34dp"
+        android:gravity="center_vertical"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:background="@drawable/bg_dialog_chip"
         android:text="当前目录: /Download"
-        android:textColor="#888888"
+        android:textColor="#A8A8A8"
         android:textSize="11sp"
         android:singleLine="true"
         android:ellipsize="start"/>
@@ -23,19 +29,26 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="8dp"
-        android:divider="#11FFFFFF"
-        android:dividerHeight="0.5dp" />
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:background="@android:color/transparent"
+        android:cacheColorHint="@android:color/transparent"
+        android:divider="#18FFFFFF"
+        android:dividerHeight="0.5dp"
+        android:listSelector="@drawable/bg_popup_item"
+        android:fadeScrollbars="true" />
 
     <TextView
         android:id="@+id/btnBackDir"
         android:layout_width="match_parent"
-        android:layout_height="36dp"
-        android:layout_marginTop="8dp"
-        android:background="#15FFFFFF"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_dialog_chip"
         android:gravity="center"
         android:text="返回上一级"
-        android:textColor="#DFDFDF"
+        android:textColor="#F2F2F2"
         android:textSize="12sp"
-        android:textStyle="bold"/>
+        android:textStyle="bold"
+        android:clickable="true"
+        android:focusable="true"/>
+
 </LinearLayout>

@@ -4,15 +4,21 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp"
-    android:background="@drawable/bg_bottom_sheet">
+    android:paddingLeft="22dp"
+    android:paddingTop="18dp"
+    android:paddingRight="22dp"
+    android:paddingBottom="24dp"
+    android:background="@drawable/bg_bottom_sheet"
+    android:animateLayoutChanges="true"
+    android:clipToPadding="false"
+    android:elevation="12dp">
 
     <View
-        android:layout_width="40dp"
+        android:layout_width="42dp"
         android:layout_height="4dp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="20dp"
-        android:background="#D1D1D1" />
+        android:layout_marginBottom="18dp"
+        android:background="@drawable/bg_sheet_handle" />
 
     <TextView
         android:id="@+id/menuTitle"
@@ -22,52 +28,88 @@
         android:textSize="18sp"
         android:textStyle="bold"
         android:layout_marginBottom="16dp"
-        android:textColor="#333333" />
+        android:textColor="#222222" />
 
     <LinearLayout
         android:id="@+id/btnEditText"
         android:layout_width="match_parent"
         android:layout_height="60dp"
+        android:layout_marginBottom="10dp"
         android:background="@drawable/bg_menu_item"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="16dp">
+        android:paddingLeft="16dp"
+        android:paddingRight="14dp"
+        android:clickable="true"
+        android:focusable="true">
+
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:gravity="center"
             android:text="✎"
             android:textSize="20sp"
-            android:layout_marginRight="16dp"/>
+            android:textColor="#333333"
+            android:layout_marginRight="14dp"/>
+
         <TextView
             android:id="@+id/txtEditLabel"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="自定义修改文字"
             android:textSize="16sp"
-            android:textColor="#333333" />
+            android:textStyle="bold"
+            android:textColor="#252525" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="›"
+            android:textSize="24sp"
+            android:textColor="#999999" />
+
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/btnEditImage"
         android:layout_width="match_parent"
         android:layout_height="60dp"
+        android:layout_marginBottom="10dp"
         android:background="@drawable/bg_menu_item"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="16dp">
+        android:paddingLeft="16dp"
+        android:paddingRight="14dp"
+        android:clickable="true"
+        android:focusable="true">
+
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:gravity="center"
             android:text="🖼"
-            android:textSize="20sp"
-            android:layout_marginRight="16dp"/>
+            android:textSize="19sp"
+            android:textColor="#333333"
+            android:layout_marginRight="14dp"/>
+
         <TextView
             android:id="@+id/imgEditLabel"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="更改请假图片"
             android:textSize="16sp"
-            android:textColor="#333333" />
+            android:textStyle="bold"
+            android:textColor="#252525" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="›"
+            android:textSize="24sp"
+            android:textColor="#999999" />
+
     </LinearLayout>
 
     <LinearLayout
@@ -77,20 +119,37 @@
         android:background="@drawable/bg_menu_item"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="16dp">
+        android:paddingLeft="16dp"
+        android:paddingRight="14dp"
+        android:clickable="true"
+        android:focusable="true">
+
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:gravity="center"
             android:text="🔄"
-            android:textSize="20sp"
-            android:layout_marginRight="16dp"/>
+            android:textSize="19sp"
+            android:textColor="#333333"
+            android:layout_marginRight="14dp"/>
+
         <TextView
             android:id="@+id/verSwitchLabel"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="有图版 / 无图版 切换"
             android:textSize="16sp"
-            android:textColor="#333333" />
+            android:textStyle="bold"
+            android:textColor="#252525" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="›"
+            android:textSize="24sp"
+            android:textColor="#999999" />
+
     </LinearLayout>
 
 </LinearLayout>
