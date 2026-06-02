@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.hebao"
-        minSdk = 23
+        minSdk = 26
         targetSdk = 36
         versionCode = 2
         versionName = "3.1.0"
