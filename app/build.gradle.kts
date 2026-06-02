@@ -12,10 +12,10 @@ android {
 
     defaultConfig {
         applicationId = "com.example.hebao"
-        minSdk = 34
+        minSdk = 23
         targetSdk = 36
         versionCode = 2
-        versionName = "3.0.0"
+        versionName = "3.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
